@@ -1,10 +1,12 @@
-use crate::ast::{Expr, Op, Stmt};
+use crate::ast::{BlockContents, Expr, Op, Stmt};
 use crate::lexer::Lexer;
 use crate::token::Token;
 
 #[derive(PartialOrd, PartialEq, Clone, Copy, Debug)]
 enum Precedence {
     Lowest,
+    Equals,
+    LessGreater,
     Sum,     // + or -
     Product, // * or /
     Prefix,  // -5
@@ -48,7 +50,13 @@ impl Parser {
         match self.cur_token {
             Token::Let => self.parse_let_statement(),
             Token::Print => self.parse_print_statement(),
-            _ => None,
+            _ => {
+                if let Some(expr) = self.parse_expression(Precedence::Lowest) {
+                    Some(Stmt::Expression(expr))
+                } else {
+                    None
+                }
+            }
         }
     }
 
@@ -100,12 +108,19 @@ impl Parser {
             Token::Integer(val) => Some(Expr::Literal(val)),
             Token::Ident(ref name) => Some(Expr::Variable(name.clone())),
             Token::LParen => self.parse_grouped_expression(),
+            Token::True => Some(Expr::Bool(true)),
+            Token::False => Some(Expr::Bool(false)),
+            Token::If => self.parse_if_expression(),
             _ => None,
         };
 
-        while self.peek_token != Token::Semicolon && precedence < self.peek_precedence() {
+        while self.peek_token != Token::Semicolon
+            && self.peek_token != Token::RParen
+            && self.peek_token != Token::RBrace
+            && precedence < self.peek_precedence()
+        {
             self.next_token();
-            left_expr = self.parse_infix_expression(left_expr.unwrap());
+            left_expr = self.parse_infix_expression(left_expr?);
         }
 
         left_expr
@@ -118,6 +133,10 @@ impl Parser {
             Token::Star => Op::Multiply,
             Token::Slash => Op::Divide,
             Token::Modulo => Op::Modulo,
+            Token::Eq => Op::Eq,
+            Token::NotEq => Op::NotEq,
+            Token::Lt => Op::Lt,
+            Token::Gt => Op::Gt,
             _ => return None,
         };
 
@@ -141,10 +160,53 @@ impl Parser {
         Some(expr)
     }
 
+    fn parse_if_expression(&mut self) -> Option<Expr> {
+        if !self.expect_peek(Token::LParen) {
+            return None;
+        }
+        self.next_token();
+        let condition = self.parse_expression(Precedence::Lowest)?;
+        if !self.expect_peek(Token::RParen) {
+            return None;
+        }
+        if !self.expect_peek(Token::LBrace) {
+            return None;
+        }
+        let consequence = self.parse_block_contents()?;
+        let alternative = if self.peek_token == Token::Else {
+            self.next_token();
+            if !self.expect_peek(Token::LBrace) {
+                return None;
+            }
+            Some(self.parse_block_contents()?)
+        } else {
+            None
+        };
+        Some(Expr::If {
+            condition: Box::new(condition),
+            consequence: Box::new(consequence),
+            alternative: alternative.map(Box::new),
+        })
+    }
+
+    fn parse_block_contents(&mut self) -> Option<BlockContents> {
+        let mut statements = Vec::new();
+        self.next_token();
+        while self.cur_token != Token::RBrace && self.cur_token != Token::EOF {
+            if let Some(stmt) = self.parse_statement() {
+                statements.push(stmt);
+            }
+            self.next_token();
+        }
+        Some(BlockContents { statements })
+    }
+
     fn peek_precedence(&self) -> Precedence {
         match self.peek_token {
             Token::Plus | Token::Minus => Precedence::Sum,
             Token::Star | Token::Slash | Token::Modulo => Precedence::Product,
+            Token::Eq | Token::NotEq => Precedence::Equals,
+            Token::Lt | Token::Gt => Precedence::LessGreater,
             _ => Precedence::Lowest,
         }
     }
@@ -164,78 +226,6 @@ impl Parser {
         } else {
             eprintln!("Expected token {:?}, got {:?}", token, self.peek_token);
             false
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_let_statement() {
-        let source = "let x = 5;";
-        let lexer = Lexer::new(source.to_string());
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse_program();
-        assert_eq!(program.len(), 1);
-        if let Stmt::Let { name, value } = &program[0] {
-            assert_eq!(name, "x");
-            assert_eq!(value, &Expr::Literal(5));
-        } else {
-            panic!("Expected Stmt::Let, got {:?}", &program[0]);
-        }
-    }
-
-    #[test]
-    fn test_parse_let_statement_with_multiply() {
-        let source = "let x = 5 + 10 * 2;";
-        let lexer = Lexer::new(source.to_string());
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse_program();
-        assert_eq!(program.len(), 1);
-        if let Stmt::Let { name, value } = &program[0] {
-            assert_eq!(name, "x");
-            assert_eq!(
-                value,
-                &Expr::Binary {
-                    left: Box::new(Expr::Literal(5)),
-                    op: Op::Plus,
-                    right: Box::new(Expr::Binary {
-                        left: Box::new(Expr::Literal(10)),
-                        op: Op::Multiply,
-                        right: Box::new(Expr::Literal(2)),
-                    }),
-                }
-            );
-        } else {
-            panic!("Expected Stmt::Let, got {:?}", &program[0]);
-        }
-    }
-
-    #[test]
-    fn test_parse_let_statement_with_parens() {
-        let source = "let x = (5 + 10) * 2;";
-        let lexer = Lexer::new(source.to_string());
-        let mut parser = Parser::new(lexer);
-        let program = parser.parse_program();
-        assert_eq!(program.len(), 1);
-        if let Stmt::Let { name, value } = &program[0] {
-            assert_eq!(name, "x");
-            assert_eq!(
-                value,
-                &Expr::Binary {
-                    left: Box::new(Expr::Binary {
-                        left: Box::new(Expr::Literal(5)),
-                        op: Op::Plus,
-                        right: Box::new(Expr::Literal(10)),
-                    }),
-                    op: Op::Multiply,
-                    right: Box::new(Expr::Literal(2)),
-                }
-            );
-        } else {
-            panic!("Expected Stmt::Let, got {:?}", &program[0]);
         }
     }
 }

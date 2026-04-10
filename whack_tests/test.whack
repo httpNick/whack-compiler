@@ -1,0 +1,2 @@
+let x = if (5 > 10) { 10 } else { 20 };
+print x;

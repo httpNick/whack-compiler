@@ -1,4 +1,4 @@
-use crate::ast::{Expr, Op, Stmt};
+use crate::ast::{BlockContents, Expr, Op, Stmt};
 use std::collections::HashMap;
 
 pub struct Evaluator {
@@ -18,23 +18,32 @@ impl Evaluator {
         }
     }
 
-    fn eval_statement(&mut self, stmt: Stmt) {
+    fn eval_statement(&mut self, stmt: Stmt) -> i64 {
         match stmt {
             Stmt::Let { name, value } => {
                 let result = self.eval_expression(value);
                 self.env.insert(name, result);
+                result
             }
             Stmt::Print(expr) => {
                 let result = self.eval_expression(expr);
                 println!("{}", result);
+                result
             }
-            Stmt::Expression(expr) => {
-                self.eval_expression(expr);
-            }
+            Stmt::Expression(expr) => self.eval_expression(expr),
+            Stmt::While { .. } => todo!(),
         }
     }
 
-    fn eval_expression(&self, expr: Expr) -> i64 {
+    fn eval_block_contents(&mut self, block: BlockContents) -> i64 {
+        let mut result = 0;
+        for stmt in block.statements {
+            result = self.eval_statement(stmt);
+        }
+        result
+    }
+
+    fn eval_expression(&mut self, expr: Expr) -> i64 {
         match expr {
             Expr::Literal(val) => val,
             Expr::Variable(name) => *self.env.get(&name).unwrap_or_else(|| {
@@ -64,6 +73,57 @@ impl Evaluator {
                         } else {
                             left_val % right_val
                         }
+                    }
+                    Op::Eq => {
+                        if left_val == right_val {
+                            1
+                        } else {
+                            0
+                        }
+                    }
+                    Op::NotEq => {
+                        if left_val != right_val {
+                            1
+                        } else {
+                            0
+                        }
+                    }
+                    Op::Lt => {
+                        if left_val < right_val {
+                            1
+                        } else {
+                            0
+                        }
+                    }
+                    Op::Gt => {
+                        if left_val > right_val {
+                            1
+                        } else {
+                            0
+                        }
+                    }
+                }
+            }
+            Expr::Bool(bool) => {
+                if bool {
+                    1
+                } else {
+                    0
+                }
+            }
+            Expr::If {
+                condition,
+                consequence,
+                alternative,
+            } => {
+                let condition_val = self.eval_expression(*condition);
+                if condition_val != 0 {
+                    self.eval_block_contents(*consequence)
+                } else {
+                    if let Some(alt) = alternative {
+                        self.eval_block_contents(*alt)
+                    } else {
+                        0
                     }
                 }
             }

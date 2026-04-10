@@ -1,11 +1,17 @@
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr {
     Literal(i64),
+    Bool(bool),
     Variable(String),
     Binary {
         left: Box<Expr>,
         op: Op,
         right: Box<Expr>,
+    },
+    If {
+        condition: Box<Expr>,
+        consequence: Box<BlockContents>,
+        alternative: Option<Box<BlockContents>>,
     },
 }
 
@@ -16,13 +22,29 @@ pub enum Op {
     Multiply,
     Divide,
     Modulo,
+    Eq,
+    NotEq,
+    Lt,
+    Gt,
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Stmt {
-    Let { name: String, value: Expr },
+    Let {
+        name: String,
+        value: Expr,
+    },
     Print(Expr),
+    While {
+        condition: Expr,
+        body: BlockContents,
+    },
     Expression(Expr),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct BlockContents {
+    pub statements: Vec<Stmt>,
 }
 
 #[cfg(test)]

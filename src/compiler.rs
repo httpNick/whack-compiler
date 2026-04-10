@@ -1,4 +1,4 @@
-use crate::ast::{Expr, Op, Stmt};
+use crate::ast::{BlockContents, Expr, Op, Stmt};
 
 pub struct Compiler {
     output: String,
@@ -13,32 +13,51 @@ impl Compiler {
 
     pub fn compile(&mut self, program: Vec<Stmt>) -> String {
         for stmt in program {
-            self.compile_statement(stmt);
+            let (code, _) = self.compile_statement(stmt);
+            self.output.push_str(&code);
         }
         self.output.push_str("    return 0;\n}\n");
         self.output.clone()
     }
 
-    fn compile_statement(&mut self, stmt: Stmt) {
+    fn compile_statement(&mut self, stmt: Stmt) -> (String, String) {
         match stmt {
             Stmt::Let { name, value } => {
                 let expr_str = self.compile_expression(value);
-                self.output
-                    .push_str(&format!("    long {} = {};\n", name, expr_str));
+                (
+                    format!("    long {} = {};\n", name, expr_str),
+                    name.to_string(),
+                )
             }
             Stmt::Print(expr) => {
                 let expr_str = self.compile_expression(expr);
-                self.output
-                    .push_str(&format!("    printf(\"%ld\\n\", {});\n", expr_str));
+                (
+                    format!("    printf(\"%ld\\n\", {});\n", expr_str),
+                    String::new(),
+                )
             }
             Stmt::Expression(expr) => {
                 let expr_str = self.compile_expression(expr);
-                self.output.push_str(&format!("    {};\n", expr_str));
+                (format!("    {};\n", expr_str), expr_str)
             }
+            Stmt::While { .. } => todo!(),
         }
     }
 
-    fn compile_expression(&self, expr: Expr) -> String {
+    fn compile_block_contents(&mut self, block: BlockContents, result_var: &str) -> String {
+        let mut result = String::new();
+        for (i, stmt) in block.statements.iter().enumerate() {
+            let is_last = i == block.statements.len() - 1;
+            let (code, var) = self.compile_statement(stmt.clone());
+            result.push_str(&code);
+            if is_last && !var.is_empty() {
+                result.push_str(&format!("    {} = {};\n", result_var, var));
+            }
+        }
+        result
+    }
+
+    fn compile_expression(&mut self, expr: Expr) -> String {
         match expr {
             Expr::Literal(val) => val.to_string(),
             Expr::Variable(name) => name,
@@ -51,9 +70,39 @@ impl Compiler {
                     Op::Multiply => "*",
                     Op::Divide => "/",
                     Op::Modulo => "%",
+                    Op::Eq => "==",
+                    Op::NotEq => "!=",
+                    Op::Lt => "<",
+                    Op::Gt => ">",
                 };
                 format!("({} {} {})", left_str, op_str, right_str)
             }
+            Expr::If {
+                condition,
+                consequence,
+                alternative,
+            } => {
+                let condition_str = self.compile_expression(*condition);
+                let consequence_str = self.compile_block_contents(*consequence, "_res");
+                let alternative_str = if let Some(alt) = alternative {
+                    self.compile_block_contents(*alt, "_res")
+                } else {
+                    String::new()
+                };
+                format!(
+                    "({{
+long _res = 0;
+if ({}) {{
+{}
+}} else {{
+{}
+}}
+_res;
+}})",
+                    condition_str, consequence_str, alternative_str
+                )
+            }
+            Expr::Bool(b) => if b { "1" } else { "0" }.to_string(),
         }
     }
 }

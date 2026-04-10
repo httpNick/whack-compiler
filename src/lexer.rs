@@ -25,7 +25,37 @@ impl Lexer {
         let token = match ch {
             '=' => {
                 self.position += 1;
-                Token::Assign
+                if self.position < self.input.len() && self.input[self.position] == '=' {
+                    self.position += 1;
+                    Token::Eq
+                } else {
+                    Token::Assign
+                }
+            }
+            '!' => {
+                self.position += 1;
+                if self.position < self.input.len() && self.input[self.position] == '=' {
+                    self.position += 1;
+                    Token::NotEq
+                } else {
+                    Token::Illegal(ch)
+                }
+            }
+            '<' => {
+                self.position += 1;
+                Token::Lt
+            }
+            '>' => {
+                self.position += 1;
+                Token::Gt
+            }
+            '{' => {
+                self.position += 1;
+                Token::LBrace
+            }
+            '}' => {
+                self.position += 1;
+                Token::RBrace
             }
             ';' => {
                 self.position += 1;
@@ -65,7 +95,7 @@ impl Lexer {
                 } else if ch.is_numeric() {
                     return self.read_number();
                 } else {
-                    Token::EOF
+                    Token::Illegal(ch)
                 }
             }
         };
@@ -91,6 +121,11 @@ impl Lexer {
         match identifier.as_str() {
             "let" => Token::Let,
             "print" => Token::Print,
+            "if" => Token::If,
+            "else" => Token::Else,
+            "while" => Token::While,
+            "true" => Token::True,
+            "false" => Token::False,
             _ => Token::Ident(identifier),
         }
     }
@@ -111,7 +146,7 @@ mod tests {
 
     #[test]
     fn test_next_token() {
-        let source = "let x = 5;\nprint x + 10;";
+        let source = "let x = 5;\nprint x + 10;\nif (x == 10) {\n    print x;\n}";
         let mut lexer = Lexer::new(source.to_string());
 
         let expected_tokens = vec![
@@ -124,6 +159,38 @@ mod tests {
             Token::Ident("x".to_string()),
             Token::Plus,
             Token::Integer(10),
+            Token::Semicolon,
+            Token::If,
+            Token::LParen,
+            Token::Ident("x".to_string()),
+            Token::Eq,
+            Token::Integer(10),
+            Token::RParen,
+            Token::LBrace,
+            Token::Print,
+            Token::Ident("x".to_string()),
+            Token::Semicolon,
+            Token::RBrace,
+            Token::EOF,
+        ];
+
+        for expected in expected_tokens {
+            let token = lexer.next_token();
+            assert_eq!(token, expected);
+        }
+    }
+
+    #[test]
+    fn test_next_token_illegal_chars() {
+        let source = "let x =! 5;";
+        let mut lexer = Lexer::new(source.to_string());
+
+        let expected_tokens = vec![
+            Token::Let,
+            Token::Ident("x".to_string()),
+            Token::Assign,
+            Token::Illegal('!'),
+            Token::Integer(5),
             Token::Semicolon,
             Token::EOF,
         ];
