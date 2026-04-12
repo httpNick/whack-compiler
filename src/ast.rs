@@ -36,8 +36,8 @@ pub enum Stmt {
     },
     Print(Expr),
     While {
-        condition: Expr,
-        body: BlockContents,
+        condition: Box<Expr>,
+        body: Box<BlockContents>,
     },
     Expression(Expr),
 }

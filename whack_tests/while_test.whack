@@ -1,0 +1,7 @@
+let n = 5;
+let result = 1;
+while (n > 0) {
+  let result = result * n;
+  let n = n - 1;
+}
+print(result);

@@ -95,6 +95,7 @@ impl Lexer {
                 } else if ch.is_numeric() {
                     return self.read_number();
                 } else {
+                    self.position += 1;
                     Token::Illegal(ch)
                 }
             }

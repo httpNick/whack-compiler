@@ -50,6 +50,7 @@ impl Parser {
         match self.cur_token {
             Token::Let => self.parse_let_statement(),
             Token::Print => self.parse_print_statement(),
+            Token::While => self.parse_while_statement(),
             _ => {
                 if let Some(expr) = self.parse_expression(Precedence::Lowest) {
                     Some(Stmt::Expression(expr))
@@ -101,6 +102,25 @@ impl Parser {
         }
 
         Some(Stmt::Print(value))
+    }
+
+    fn parse_while_statement(&mut self) -> Option<Stmt> {
+        if !self.expect_peek(Token::LParen) {
+            return None;
+        }
+        self.next_token();
+        let condition = self.parse_expression(Precedence::Lowest)?;
+        if !self.expect_peek(Token::RParen) {
+            return None;
+        }
+        if !self.expect_peek(Token::LBrace) {
+            return None;
+        }
+        let body = self.parse_block_contents()?;
+        Some(Stmt::While {
+            condition: Box::new(condition),
+            body: Box::new(body),
+        })
     }
 
     fn parse_expression(&mut self, precedence: Precedence) -> Option<Expr> {
@@ -226,6 +246,46 @@ impl Parser {
         } else {
             eprintln!("Expected token {:?}, got {:?}", token, self.peek_token);
             false
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_while_statement() {
+        let input = "while (x > 5) { let x = x - 1; }";
+        let lexer = Lexer::new(input.to_string());
+        let mut parser = Parser::new(lexer);
+        let program = parser.parse_program();
+        assert_eq!(program.len(), 1);
+        if let Stmt::While { condition, body } = &program[0] {
+            assert_eq!(
+                condition,
+                &Box::new(Expr::Binary {
+                    left: Box::new(Expr::Variable("x".to_string())),
+                    op: Op::Gt,
+                    right: Box::new(Expr::Literal(5)),
+                })
+            );
+            assert_eq!(body.statements.len(), 1);
+            if let Stmt::Let { name, value } = &body.statements[0] {
+                assert_eq!(name, "x");
+                assert_eq!(
+                    value,
+                    &Expr::Binary {
+                        left: Box::new(Expr::Variable("x".to_string())),
+                        op: Op::Minus,
+                        right: Box::new(Expr::Literal(1)),
+                    }
+                );
+            } else {
+                panic!("Expected Stmt::Let, got {:?}", body.statements[0]);
+            }
+        } else {
+            panic!("Expected Stmt::While, got {:?}", program[0]);
         }
     }
 }

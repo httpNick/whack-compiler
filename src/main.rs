@@ -13,8 +13,8 @@ use std::fs;
 use std::io::Write;
 
 fn main() {
-    let source = fs::read_to_string("whack_tests/test.whack")
-        .expect("Could not read test.whack. Make sure it exists!");
+    let source = fs::read_to_string("whack_tests/while_test.whack")
+        .expect("Could not read while_test.whack. Make sure it exists!");
 
     let lexer = Lexer::new(source);
     let mut parser = Parser::new(lexer);

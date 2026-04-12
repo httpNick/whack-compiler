@@ -31,7 +31,12 @@ impl Evaluator {
                 result
             }
             Stmt::Expression(expr) => self.eval_expression(expr),
-            Stmt::While { .. } => todo!(),
+            Stmt::While { condition, body } => {
+                while self.eval_expression((*condition).clone()) != 0 {
+                    self.eval_block_contents((*body).clone());
+                }
+                0
+            }
         }
     }
 

@@ -1,13 +1,17 @@
+use std::collections::HashSet;
+
 use crate::ast::{BlockContents, Expr, Op, Stmt};
 
 pub struct Compiler {
     output: String,
+    vars: HashSet<String>,
 }
 
 impl Compiler {
     pub fn new() -> Self {
         Self {
             output: String::from("#include <stdio.h>\n\nint main() {\n"),
+            vars: HashSet::new(),
         }
     }
 
@@ -25,7 +29,12 @@ impl Compiler {
             Stmt::Let { name, value } => {
                 let expr_str = self.compile_expression(value);
                 (
-                    format!("    long {} = {};\n", name, expr_str),
+                    if self.vars.contains(&name) {
+                        format!("    {} = {};\n", name, expr_str)
+                    } else {
+                        self.vars.insert(name.clone());
+                        format!("    long {} = {};\n", name, expr_str)
+                    },
                     name.to_string(),
                 )
             }
@@ -40,7 +49,14 @@ impl Compiler {
                 let expr_str = self.compile_expression(expr);
                 (format!("    {};\n", expr_str), expr_str)
             }
-            Stmt::While { .. } => todo!(),
+            Stmt::While { condition, body } => {
+                let condition_str = self.compile_expression(*condition);
+                let body_str = self.compile_block_contents(*body, "");
+                (
+                    format!("    while ({}) {{\n{}\n    }}\n", condition_str, body_str),
+                    String::new(),
+                )
+            }
         }
     }
 
@@ -50,7 +66,7 @@ impl Compiler {
             let is_last = i == block.statements.len() - 1;
             let (code, var) = self.compile_statement(stmt.clone());
             result.push_str(&code);
-            if is_last && !var.is_empty() {
+            if is_last && !var.is_empty() && !result_var.is_empty() {
                 result.push_str(&format!("    {} = {};\n", result_var, var));
             }
         }
