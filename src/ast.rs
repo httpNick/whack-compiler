@@ -13,6 +13,10 @@ pub enum Expr {
         consequence: Box<BlockContents>,
         alternative: Option<Box<BlockContents>>,
     },
+    FunctionCall {
+        name: String,
+        args: Vec<Expr>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -40,6 +44,12 @@ pub enum Stmt {
         body: Box<BlockContents>,
     },
     Expression(Expr),
+    Function {
+        name: String,
+        params: Vec<String>,
+        body: BlockContents,
+    },
+    Return(Expr),
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -89,6 +89,10 @@ impl Lexer {
                 self.position += 1;
                 Token::Modulo
             }
+            ',' => {
+                self.position += 1;
+                Token::Comma
+            }
             _ => {
                 if ch.is_alphabetic() {
                     return self.read_identifier();
@@ -127,6 +131,8 @@ impl Lexer {
             "while" => Token::While,
             "true" => Token::True,
             "false" => Token::False,
+            "fn" => Token::Fn,
+            "return" => Token::Return,
             _ => Token::Ident(identifier),
         }
     }

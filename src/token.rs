@@ -1,5 +1,8 @@
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
+    Fn,
+    Return,
+    Comma,
     Ident(String),
     Integer(i64),
     Illegal(char),

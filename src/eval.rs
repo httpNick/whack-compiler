@@ -3,17 +3,22 @@ use std::collections::HashMap;
 
 pub struct Evaluator {
     env: HashMap<String, i64>,
+    pub output: Vec<i64>,
 }
 
 impl Evaluator {
     pub fn new() -> Self {
         Self {
             env: HashMap::new(),
+            output: Vec::new(),
         }
     }
 
     pub fn eval_program(&mut self, program: Vec<Stmt>) -> Vec<i64> {
-        program.into_iter().map(|stmt| self.eval_statement(stmt)).collect()
+        for stmt in program {
+            self.eval_statement(stmt);
+        }
+        self.output.clone()
     }
 
     fn eval_statement(&mut self, stmt: Stmt) -> i64 {
@@ -26,6 +31,7 @@ impl Evaluator {
             Stmt::Print(expr) => {
                 let result = self.eval_expression(expr);
                 println!("{}", result);
+                self.output.push(result);
                 result
             }
             Stmt::Expression(expr) => self.eval_expression(expr),
@@ -35,6 +41,8 @@ impl Evaluator {
                 }
                 0
             }
+            Stmt::Function { name, params, body } => todo!(),
+            Stmt::Return(expr) => todo!(),
         }
     }
 
@@ -130,6 +138,7 @@ impl Evaluator {
                     }
                 }
             }
+            Expr::FunctionCall { .. } => todo!(),
         }
     }
 }

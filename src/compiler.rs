@@ -57,6 +57,8 @@ impl Compiler {
                     String::new(),
                 )
             }
+            Stmt::Function { name, params, body } => todo!(),
+            Stmt::Return(expr) => todo!(),
         }
     }
 
@@ -119,6 +121,7 @@ _res;
                 )
             }
             Expr::Bool(b) => if b { "1" } else { "0" }.to_string(),
+            Expr::FunctionCall { .. } => todo!(),
         }
     }
 }
