@@ -1,14 +1,7 @@
-mod ast;
-mod compiler;
-mod eval;
-mod lexer;
-mod parser;
-mod token;
-
-use compiler::Compiler;
-use eval::Evaluator;
-use lexer::Lexer;
-use parser::Parser;
+use whack_compiler::compiler::Compiler;
+use whack_compiler::eval::Evaluator;
+use whack_compiler::lexer::Lexer;
+use whack_compiler::parser::Parser;
 use std::fs;
 use std::io::Write;
 
