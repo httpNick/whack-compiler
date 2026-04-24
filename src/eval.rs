@@ -12,10 +12,8 @@ impl Evaluator {
         }
     }
 
-    pub fn eval_program(&mut self, program: Vec<Stmt>) {
-        for stmt in program {
-            self.eval_statement(stmt);
-        }
+    pub fn eval_program(&mut self, program: Vec<Stmt>) -> Vec<i64> {
+        program.into_iter().map(|stmt| self.eval_statement(stmt)).collect()
     }
 
     fn eval_statement(&mut self, stmt: Stmt) -> i64 {

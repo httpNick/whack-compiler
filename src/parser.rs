@@ -17,6 +17,7 @@ pub struct Parser {
     lexer: Lexer,
     cur_token: Token,
     peek_token: Token,
+    pub errors: Vec<String>,
 }
 
 impl Parser {
@@ -27,6 +28,7 @@ impl Parser {
             lexer,
             cur_token,
             peek_token,
+            errors: Vec::new(),
         }
     }
 
@@ -244,7 +246,8 @@ impl Parser {
             self.next_token();
             true
         } else {
-            eprintln!("Expected token {:?}, got {:?}", token, self.peek_token);
+            let msg = format!("Expected token {:?}, got {:?}", token, self.peek_token);
+            self.errors.push(msg);
             false
         }
     }
